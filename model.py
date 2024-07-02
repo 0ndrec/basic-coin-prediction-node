@@ -3,6 +3,7 @@ import pickle
 from zipfile import ZipFile
 from datetime import datetime
 import pandas as pd
+from typing import List, Optional
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from updater import download_binance_monthly_data, download_binance_daily_data
@@ -10,48 +11,46 @@ from config import data_base_path, model_file_path
 
 
 binance_data_path = os.path.join(data_base_path, "binance/futures-klines")
-training_price_data_path = os.path.join(data_base_path, "eth_price_data.csv")
 
+def training_data_path(token):
+    return os.path.join(data_base_path, f"{token.lower()}_price_data.csv")
 
-def download_data():
-    cm_or_um = "um"
-    symbols = ["ETHUSDT"]
-    intervals = ["1d"]
-    years = ["2020", "2021", "2022", "2023", "2024"]
-    months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
-    download_path = binance_data_path
+#Example URL: https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-02.zip
+
+def download_data(cm_or_um: str = "um", symbols: List[str] = ["ETHUSDT"], intervals: List[str] = ["1d"], years: List[str] = ["2020", "2021", "2022", "2023", "2024"], months: List[str] = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]):
+    download_path: str = binance_data_path
     download_binance_monthly_data(
         cm_or_um, symbols, intervals, years, months, download_path
     )
     print(f"Downloaded monthly data to {download_path}.")
-    current_datetime = datetime.now()
-    current_year = current_datetime.year
-    current_month = current_datetime.month
+    current_datetime: datetime = datetime.now()
+    current_year: int = current_datetime.year
+    current_month: int = current_datetime.month
     download_binance_daily_data(
         cm_or_um, symbols, intervals, current_year, current_month, download_path
     )
     print(f"Downloaded daily data to {download_path}.")
 
 
-def format_data():
-    files = sorted([x for x in os.listdir(binance_data_path)])
+def format_data(token: str) -> None:
+    files: List[str] = sorted([x for x in os.listdir(binance_data_path)])
 
     # No files to process
     if len(files) == 0:
         return
 
-    price_df = pd.DataFrame()
+    price_df: pd.DataFrame = pd.DataFrame()
     for file in files:
-        zip_file_path = os.path.join(binance_data_path, file)
+        zip_file_path: str = os.path.join(binance_data_path, file)
 
         if not zip_file_path.endswith(".zip"):
             continue
 
-        myzip = ZipFile(zip_file_path)
+        myzip: ZipFile = ZipFile(zip_file_path)
         with myzip.open(myzip.filelist[0]) as f:
-            line = f.readline()
-            header = 0 if line.decode("utf-8").startswith("open_time") else None
-        df = pd.read_csv(myzip.open(myzip.filelist[0]), header=header).iloc[:, :11]
+            line: bytes = f.readline()
+            header: Optional[int] = 0 if line.decode("utf-8").startswith("open_time") else None
+        df: pd.DataFrame = pd.read_csv(myzip.open(myzip.filelist[0]), header=header).iloc[:, :11]
         df.columns = [
             "start_time",
             "open",
@@ -69,12 +68,12 @@ def format_data():
         df.index.name = "date"
         price_df = pd.concat([price_df, df])
 
-    price_df.sort_index().to_csv(training_price_data_path)
+    price_df.sort_index().to_csv(training_data_path(token.lower()))
 
 
-def train_model():
+def train_model(token: str) -> None:
     # Load the eth price data
-    price_data = pd.read_csv(training_price_data_path)
+    price_data = pd.read_csv(training_data_path(token))
     df = pd.DataFrame()
 
     # Convert 'date' to a numerical value (timestamp) we can use for regression
@@ -101,4 +100,10 @@ def train_model():
     with open(model_file_path, "wb") as f:
         pickle.dump(model, f)
 
+    # Rename model file. Add to name file the token.
+    os.rename(model_file_path, model_file_path.replace(".pkl", f"_{token.lower()}.pkl"))
+
+
     print(f"Trained model saved to {model_file_path}")
+
+
