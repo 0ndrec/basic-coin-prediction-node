@@ -1,4 +1,5 @@
-# Basic ETH price prediction node
+# Basic price prediction node
+# Forked. Added flask routes for support other tokens. All pairs hardcoded to USDT.
 
 Example Allora network worker node: a node to provide price predictions of ETH.
 
