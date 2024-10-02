@@ -3,16 +3,17 @@ import os
 import pickle
 from zipfile import ZipFile
 import pandas as pd
-from sklearn.kernel_ridge import KernelRidge
-from sklearn.linear_model import BayesianRidge, LinearRegression
-from sklearn.svm import SVR
+from sklearn.kernel_ridge import KernelRidge # type: ignore
+from sklearn.linear_model import BayesianRidge, LinearRegression # type: ignore
+from sklearn.svm import SVR # type: ignore
 from updater import download_binance_daily_data, download_binance_current_day_data, download_coingecko_data, download_coingecko_current_day_data
-from config import data_base_path, model_file_path, TOKEN, MODEL, CG_API_KEY
+from config import data_base_path, model_file_path, TOKEN, MODEL, CG_API_KEY, TOKENS, get_model_file_path, get_training_price_data_path
 
 
 binance_data_path = os.path.join(data_base_path, "binance")
 coingecko_data_path = os.path.join(data_base_path, "coingecko")
-training_price_data_path = os.path.join(data_base_path, "price_data.csv")
+
+#training_price_data_path = os.path.join(data_base_path, "price_data.csv")
 
 
 def download_data_binance(token, training_days, region):
@@ -34,13 +35,14 @@ def download_data(token, training_days, region, data_provider):
     else:
         raise ValueError("Unsupported data provider")
     
-def format_data(files, data_provider):
+def format_data(files, data_provider, token):
+    training_price_data_path = get_training_price_data_path(token)
     if not files:
         print("Already up to date")
         return
     
     if data_provider == "binance":
-        files = sorted([x for x in os.listdir(binance_data_path) if x.startswith(f"{TOKEN}USDT")])
+        files = sorted([x for x in os.listdir(binance_data_path) if x.startswith(f"{TOKEN}USDT")]) #fixme
     elif data_provider == "coingecko":
         files = sorted([x for x in os.listdir(coingecko_data_path) if x.endswith(".json")])
 
@@ -77,8 +79,8 @@ def format_data(files, data_provider):
             df.index = [pd.Timestamp(x + 1, unit="ms").to_datetime64() for x in df["end_time"]]
             df.index.name = "date"
             price_df = pd.concat([price_df, df])
-
             price_df.sort_index().to_csv(training_price_data_path)
+
     elif data_provider == "coingecko":
         for file in files:
             with open(os.path.join(coingecko_data_path, file), "r") as f:
@@ -100,6 +102,8 @@ def format_data(files, data_provider):
 
 
 def load_frame(frame, timeframe):
+    # Supported timeframe formats: 1m, 1h, 1d
+
     print(f"Loading data...")
     df = frame.loc[:,['open','high','low','close']].dropna()
     df[['open','high','low','close']] = df[['open','high','low','close']].apply(pd.to_numeric)
@@ -109,7 +113,9 @@ def load_frame(frame, timeframe):
 
     return df.resample(f'{timeframe}', label='right', closed='right', origin='end').mean()
 
-def train_model(timeframe):
+def train_model(timeframe, token):
+    model_file_path = get_model_file_path(token)
+    training_price_data_path = get_training_price_data_path(token)
     # Load the price data
     price_data = pd.read_csv(training_price_data_path)
     df = load_frame(price_data, timeframe)
@@ -149,14 +155,19 @@ def train_model(timeframe):
 
 def get_inference(token, timeframe, region, data_provider):
     """Load model and predict current price."""
+    model_file_path = get_model_file_path(token)
+    print("Loading model from", model_file_path)
     with open(model_file_path, "rb") as f:
         loaded_model = pickle.load(f)
+
+    # Shit-fix 
+    TOKEN = token.upper()
 
     # Get current price
     if data_provider == "coingecko":
         X_new = load_frame(download_coingecko_current_day_data(token, CG_API_KEY), timeframe)
     else:
-        X_new = load_frame(download_binance_current_day_data(f"{TOKEN}USDT", region), timeframe)
+        X_new = load_frame(download_binance_current_day_data(f"{TOKEN}USDT", region), timeframe) #fixme
     
     print(X_new.tail())
     print(X_new.shape)

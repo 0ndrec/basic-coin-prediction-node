@@ -1,4 +1,6 @@
-flask[async]
+fastapi[all]
+uvicorn
+asyncio
 gunicorn[gthread]
 numpy
 pandas==2.2.2

@@ -6,11 +6,47 @@
         "gas": "auto",
         "gasAdjustment": 1.5,
         "nodeRpc": "https://allora-rpc.testnet.allora.network",
-        "maxRetries": 1,
-        "delay": 1,
+        "maxRetries": 2,
+        "delay": 3,
         "submitTx": true
     },
     "worker": [
+        {
+            "topicId": 1,
+            "inferenceEntrypointName": "api-worker-reputer",
+            "loopSeconds": 5,
+            "parameters": {
+                "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+                "Token": "ETH"
+            }
+        },
+        {
+            "topicId": 1,
+            "inferenceEntrypointName": "api-worker-reputer",
+            "loopSeconds": 5,
+            "parameters": {
+                "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+                "Token": "ETH"
+            }
+        },
+        {
+            "topicId": 1,
+            "inferenceEntrypointName": "api-worker-reputer",
+            "loopSeconds": 5,
+            "parameters": {
+                "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+                "Token": "ETH"
+            }
+        },
+        {
+            "topicId": 1,
+            "inferenceEntrypointName": "api-worker-reputer",
+            "loopSeconds": 5,
+            "parameters": {
+                "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+                "Token": "ETH"
+            }
+        },
         {
             "topicId": 1,
             "inferenceEntrypointName": "api-worker-reputer",
