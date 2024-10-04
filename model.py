@@ -7,13 +7,12 @@ from sklearn.kernel_ridge import KernelRidge # type: ignore
 from sklearn.linear_model import BayesianRidge, LinearRegression # type: ignore
 from sklearn.svm import SVR # type: ignore
 from updater import download_binance_daily_data, download_binance_current_day_data, download_coingecko_data, download_coingecko_current_day_data
-from config import data_base_path, model_file_path, TOKEN, MODEL, CG_API_KEY, TOKENS, get_model_file_path, get_training_price_data_path
+from config import data_base_path, MODEL, CG_API_KEY, get_model_file_path, get_training_price_data_path
 
 
 binance_data_path = os.path.join(data_base_path, "binance")
 coingecko_data_path = os.path.join(data_base_path, "coingecko")
 
-#training_price_data_path = os.path.join(data_base_path, "price_data.csv")
 
 
 def download_data_binance(token, training_days, region):
@@ -42,7 +41,7 @@ def format_data(files, data_provider, token):
         return
     
     if data_provider == "binance":
-        files = sorted([x for x in os.listdir(binance_data_path) if x.startswith(f"{TOKEN}USDT")]) #fixme
+        files = sorted([x for x in os.listdir(binance_data_path) if x.startswith(f"{token}USDT")]) #fixme
     elif data_provider == "coingecko":
         files = sorted([x for x in os.listdir(coingecko_data_path) if x.endswith(".json")])
 
@@ -160,14 +159,11 @@ def get_inference(token, timeframe, region, data_provider):
     with open(model_file_path, "rb") as f:
         loaded_model = pickle.load(f)
 
-    # Shit-fix 
-    TOKEN = token.upper()
-
     # Get current price
     if data_provider == "coingecko":
         X_new = load_frame(download_coingecko_current_day_data(token, CG_API_KEY), timeframe)
     else:
-        X_new = load_frame(download_binance_current_day_data(f"{TOKEN}USDT", region), timeframe) #fixme
+        X_new = load_frame(download_binance_current_day_data(f"{token}USDT", region), timeframe) #fixme
     
     print(X_new.tail())
     print(X_new.shape)
