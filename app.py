@@ -6,9 +6,12 @@ import threading
 from model import download_data, format_data, train_model, get_inference
 from config import DATA_PROVIDER, TOKENS, data_base_path
 
+
+
 app = Flask(__name__)
 
 models = Path(data_base_path).glob("*.pkl")
+
 
 def download_train(token, DATA_PROVIDER):
     TRAINING_DAYS = TOKENS[token].training_days
@@ -37,12 +40,12 @@ def update_data():
 
 @app.route("/config")
 async def check_config():
-    return TOKENS
+    return json.dumps(TOKENS)
 
 
 @app.route("/models")
-async def check_models():
-    return list(models)
+async def check_models(models):
+    return [str(model) for model in models]
     
 
 @app.route("/update")
