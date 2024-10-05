@@ -10,7 +10,6 @@ from config import DATA_PROVIDER, TOKENS, data_base_path
 
 app = Flask(__name__)
 
-models = Path(data_base_path).glob("*.pkl")
 
 
 def download_train(token, DATA_PROVIDER):
@@ -44,7 +43,8 @@ async def check_config():
 
 
 @app.route("/models")
-async def check_models(models):
+async def check_models():
+    models = Path(data_base_path).glob("*.pkl")
     return [str(model) for model in models]
     
 
