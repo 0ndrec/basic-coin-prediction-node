@@ -6,10 +6,10 @@ services:
     build: .
     command: python -u /app/app.py
     ports:
-      - "8000:9000"
+      - "8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://inference:8000/inference/${TOKEN}"]
-      interval: 10s
+      test: ["CMD", "curl", "-f", "http://inference:8000/models"]
+      interval: 8s
       timeout: 5s
       retries: 12
     volumes:

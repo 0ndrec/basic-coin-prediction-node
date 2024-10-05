@@ -1,11 +1,23 @@
+import json
+from flask import Flask, Response
+from pathlib import Path
 import asyncio
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
 import threading
-from contextlib import asynccontextmanager
 from model import download_data, format_data, train_model, get_inference
-from config import DATA_PROVIDER, TOKENS
+from config import DATA_PROVIDER, TOKENS, data_base_path
 
+app = Flask(__name__)
+
+models = Path(data_base_path).glob("*.pkl")
+
+def download_train(token, DATA_PROVIDER):
+    TRAINING_DAYS = TOKENS[token].training_days
+    REGION = TOKENS[token].region
+    TIMEFRAME = TOKENS[token].timeframe
+
+    files = download_data(token, TRAINING_DAYS, REGION, DATA_PROVIDER)
+    format_data(files, DATA_PROVIDER, token)
+    train_model(TIMEFRAME, token)
 
 
 def update_data():
@@ -22,55 +34,42 @@ def update_data():
     except Exception as e:
         print(f"Failed to update data: {str(e)}")
 
-def download_train(TOKEN, DATA_PROVIDER):
-    TRAINING_DAYS = TOKENS[TOKEN].training_days
-    REGION = TOKENS[TOKEN].region
-    TIMEFRAME = TOKENS[TOKEN].timeframe
 
-    files = download_data(TOKEN, TRAINING_DAYS, REGION, DATA_PROVIDER)
-    format_data(files, DATA_PROVIDER, TOKEN)
-    train_model(TIMEFRAME, TOKEN)
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Lifespan context manager for startup and shutdown events."""
-    loop = asyncio.get_event_loop()
-    # Startup: Run update_data asynchronously
-    await loop.run_in_executor(None, update_data)
-    yield
-
-app = FastAPI(lifespan=lifespan)
-
-@app.get("/config")
-def check_config():
+@app.route("/config")
+async def check_config():
     return TOKENS
 
-@app.get("/inference/{token}")
+
+@app.route("/models")
+async def check_models():
+    return list(models)
+    
+
+@app.route("/update")
+async def update():
+    try:
+        await asyncio.to_thread(update_data)
+        return "0"
+    except Exception:
+        return "1"
+    
+
+@app.route("/inference/<string:token>")
 async def generate_inference(token: str):
     TIMEFRAME = TOKENS[token.upper()].timeframe
     REGION = TOKENS[token.upper()].region
 
     if not token or token.upper() not in TOKENS.keys():
         error_msg = "Token is required" if not token else "Token not supported"
-        return HTMLResponse(content=error_msg, status_code=400)
+        return Response(json.dumps({"error": error_msg}), status=400, mimetype='application/json')
     try:
         inference = await asyncio.to_thread(get_inference, token.upper(), TIMEFRAME, REGION, DATA_PROVIDER)
-        return HTMLResponse(content=str(inference), status_code=200)
+        return Response(str(inference), status=200)
+        
     except Exception as e:
-        return HTMLResponse(content=str(e), status_code=500)
-
-@app.get("/update")
-async def update():
-    """Update data and return status."""
-    try:
-        # Run update_data asynchronously
-        await asyncio.to_thread(update_data)
-        return HTMLResponse(content="0", status_code=200)
-    except Exception:
-        return HTMLResponse(content="1", status_code=500)
+        return Response(json.dumps({"error": str(e)}), status=500, mimetype='application/json')
     
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    return HTMLResponse(content=str(exc.detail), status_code=exc.status_code)
 
+if __name__ == "__main__":
+    update_data()
+    app.run(host="0.0.0.0", port=8000)

@@ -110,6 +110,10 @@ def load_frame(frame, timeframe):
     df.set_index('date', inplace=True)
     df.sort_index(inplace=True)
 
+    # FutureWarning: 'm' is deprecated and will be removed in a future version, please use 'ME' instead.
+    if 'm' in timeframe:
+        timeframe = timeframe.replace('m', 'ME')
+
     return df.resample(f'{timeframe}', label='right', closed='right', origin='end').mean()
 
 def train_model(timeframe, token):
