@@ -37,10 +37,16 @@ def update_data():
         print(f"Failed to update data: {str(e)}")
 
 
-@app.route("/config")
-async def check_config():
-    return json.dumps(TOKENS)
-
+@app.route("/tokens")
+async def check_tokens():
+    tokens = {}
+    names = list(TOKENS.keys())
+    for name in names:
+        tokens[name] = {
+            "timeframe": TOKENS[name].timeframe,
+            "training_days": TOKENS[name].training_days
+        }
+    return tokens
 
 @app.route("/models")
 async def check_models():
