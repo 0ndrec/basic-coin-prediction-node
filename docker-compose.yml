@@ -9,7 +9,7 @@ services:
       - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://inference:8000/models"]
-      interval: 8s
+      interval: 15s
       timeout: 5s
       retries: 12
     volumes:
